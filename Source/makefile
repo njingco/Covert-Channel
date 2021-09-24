@@ -1,13 +1,13 @@
 CC=gcc -Wall -g
 CLIB = -lpthread -lrt
 
-all: covert 
+all: covert_udp 
 
-covert: covert.o 
-	$(CC) -o covert covert.o $(CLIB)
+covert_udp: covert_udp.o 
+	$(CC) -o covert_udp covert_udp.o $(CLIB)
 
 clean:
-	rm -f *.o core.* covert 
+	rm -f *.o covert_udp 
 	
-covert.o:
-	$(CC) -c covert.c
+covert_udp.o:
+	$(CC) -c covert_udp.c

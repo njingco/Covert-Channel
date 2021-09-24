@@ -21,6 +21,15 @@
  * program modifies the UDP header to transfer a file one byte at a time  to the destination
  * host consealing the data in the port number. This program acts as both a server and 
  * client.
+ * 
+ * Compile:
+ * cc -o covert_udp covert_udp.c
+ * 
+ * Client
+ * ./covert_udp -dest 192.168.1.72 -source 192.168.1.71 -source_port 323 -dest_port 323 -file sample.txt
+ * 
+ * Server
+ * ./covert_udp -dest 192.168.1.72 -source 192.168.1.71 -source_port 323 -dest_port 323 -file sample.txt -server
  * ---------------------------------------------------------------------------------------*/
 #include "covert_udp.h"
 
@@ -42,7 +51,7 @@
  * NOTES:
  * This is the main function
  * -----------------------------------------------------------------------*/
-main(int argc, char **argv)
+int main(int argc, char **argv)
 {
     unsigned int source_host = 0, dest_host = 0;
     unsigned short source_port = 0, dest_port = 80;
@@ -111,7 +120,7 @@ main(int argc, char **argv)
         exit(1);
     }
 
-    if (server == 0) /* if they want to be a client do this... */
+    if (svr == 0) /* if they want to be a client do this... */
     {
         if (source_host == 0 && dest_host == 0)
         {
@@ -156,7 +165,7 @@ main(int argc, char **argv)
     }
 
     /* Do the dirty work */
-    forgepacket(source_host, dest_host, source_port, dest_port, filename, server, ipid);
+    forgepacket(source_host, dest_host, source_port, dest_port, filename, svr, ipid);
     exit(0);
 }
 
@@ -182,24 +191,42 @@ void forgepacket(unsigned int source_addr, unsigned int dest_addr, unsigned shor
 {
     if (svr == 0)
     {
-        client(source_addr, dest_addr, dest_port, filename, ipid);
+        client(source_addr, dest_addr, source_port, dest_port, filename, ipid);
     }
     else
     {
         server(source_addr, filename, ipid);
     }
 
-    fprintf(stdout, "\nforge packets");
+    fprintf(stdout, "\nforge packets\n\n");
 }
 
-void client(unsigned int source_addr, unsigned int dest_addr, unsigned short dest_port, char *filename, int ipid)
+/*--------------------------------------------------------------------------
+ * FUNCTION:        forgepacket
+ *
+ * DATE:           Sep 20, 2021
+ *
+ * REVISIONS:      NA
+ * 
+ * DESIGNER:       Nicole Jingco
+ *
+ * PROGRAMMER:     Nicole Jingco
+ *
+ * INTERFACE:      unsigned int source_addr, unsigned int dest_addr, unsigned short dest_port, char *filename, int ipid
+ *
+ * RETURNS:        
+ *
+ * NOTES:
+ * Client function for consealing the message using the UDP header and
+ * hiding the message in the port number
+ * -----------------------------------------------------------------------*/
+void client(unsigned int source_addr, unsigned int dest_addr, unsigned short source_port, unsigned short dest_port, char *filename, int ipid)
 {
     int ch;
     int send_socket;
+    // int src_port;
     struct sockaddr_in sin;
     FILE *input;
-
-    /* are we the client? */
 
     if ((input = fopen(filename, "rb")) == NULL)
     {
@@ -225,8 +252,10 @@ void client(unsigned int source_addr, unsigned int dest_addr, unsigned short des
             /* of the IP identification field */
             if (ipid == 0)
                 send_udp.ip.id = (int)(255.0 * rand() / (RAND_MAX + 1.0));
-            else /* otherwise we "encode" it with our cheesy algorithm */
-                send_udp.ip.id = ch;
+            // else /* otherwise we "encode" it with our cheesy algorithm */
+            //     send_udp.ip.id = ch;
+
+            // Conseal Message
 
             send_udp.ip.frag_off = 0;
             send_udp.ip.ttl = 64;
@@ -237,6 +266,9 @@ void client(unsigned int source_addr, unsigned int dest_addr, unsigned short des
 
             /* forge destination port */
             send_udp.udp.dest = htons(dest_port);
+
+            // Conseal Message
+            send_udp.udp.source = htons(ch);
 
             /* Drop our forged data into the socket struct */
             sin.sin_family = AF_INET;
@@ -260,9 +292,9 @@ void client(unsigned int source_addr, unsigned int dest_addr, unsigned short des
             pseudo_header.dest_address = send_udp.ip.daddr;
             pseudo_header.placeholder = 0;
             pseudo_header.protocol = IPPROTO_UDP;
-            pseudo_header.udp_length = htons(20);
+            pseudo_header.udp_length = htons(8);
 
-            bcopy((char *)&send_udp.udp, (char *)&pseudo_header.udp, 20);
+            bcopy((char *)&send_udp.udp, (char *)&pseudo_header.udp, 8);
 
             /* Final checksum on the entire package */
             send_udp.udp.check = in_cksum((unsigned short *)&pseudo_header, 32);
@@ -276,11 +308,29 @@ void client(unsigned int source_addr, unsigned int dest_addr, unsigned short des
     fclose(input);
 }
 
+/*--------------------------------------------------------------------------
+ * FUNCTION:        forgepacket
+ *
+ * DATE:           Sep 20, 2021
+ *
+ * REVISIONS:      NA
+ * 
+ * DESIGNER:       Nicole Jingco
+ *
+ * PROGRAMMER:     Nicole Jingco
+ *
+ * INTERFACE:      unsigned int source_addr, char *filename, int ipid
+ *
+ * RETURNS:        
+ *
+ * NOTES:
+ * Server function for unvealing the message from the UDP header and
+ * writing the the message to a file.
+ * -----------------------------------------------------------------------*/
 void server(unsigned int source_addr, char *filename, int ipid)
 {
     FILE *output;
     int recv_socket;
-    char data;
 
     if ((output = fopen(filename, "wb")) == NULL)
     {
@@ -301,11 +351,8 @@ void server(unsigned int source_addr, char *filename, int ipid)
         /* Listen for return packet on a passive socket */
         read(recv_socket, (struct recv_udp *)&recv_pkt, 9999);
 
-        // Decrypt Here
-        data = "port char";
-
-        printf("Receiving Data: %c\n", data);
-        fprintf(output, "%c", data);
+        printf("Receiving Data: %c\n", recv_pkt.udp.source);
+        fprintf(output, "%c", recv_pkt.udp.source);
         fflush(output);
 
         close(recv_socket); /* close the socket so we don't hose the kernel */

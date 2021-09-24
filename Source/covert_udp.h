@@ -18,8 +18,10 @@ unsigned short in_cksum(unsigned short *, int);
 unsigned int host_convert(char *);
 void usage(char *);
 
-void client(unsigned int source_addr, unsigned int dest_addr, unsigned short dest_port, char *filename, int ipid);
+void client(unsigned int source_addr, unsigned int dest_addr, unsigned short source_port, unsigned short dest_port, char *filename, int ipid);
 void server(unsigned int source_addr, char *filename, int ipid);
+int charToInt(char msg);
+char intToChar(int number);
 
 struct send_udp
 {
