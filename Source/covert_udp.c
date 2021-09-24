@@ -17,7 +17,7 @@
  * PROGRAMMERS:		Nicole Jingco
  * 
  * Notes:
- * This application is a modification of the Craig H. Rowland TCP Covert Channel. This 
+ * This application is a modification of the Craig H. Rowland UDP Covert Channel. This 
  * program modifies the UDP header to transfer a file one byte at a time  to the destination
  * host consealing the data in the port number. This program acts as both a server and 
  * client.
@@ -46,12 +46,12 @@ main(int argc, char **argv)
 {
     unsigned int source_host = 0, dest_host = 0;
     unsigned short source_port = 0, dest_port = 80;
-    int ipid = 0, seq = 0, ack = 0, server = 0, file = 0;
+    int ipid = 0, svr = 0, file = 0;
     int count;
     char desthost[80], srchost[80], filename[80];
 
     /* Title */
-    printf("Covert TCP %s (c)1996 Craig H. Rowland (crowland@psionic.com)\n", VERSION);
+    printf("Covert UDP %s (c)1996 Craig H. Rowland (crowland@psionic.com)\n", VERSION);
     printf("Not for commercial use without permission.\n");
 
     /* Can they run this? */
@@ -92,18 +92,14 @@ main(int argc, char **argv)
             dest_port = atoi(argv[count + 1]);
         else if (strcmp(argv[count], "-ipid") == 0)
             ipid = 1;
-        else if (strcmp(argv[count], "-seq") == 0)
-            seq = 1;
-        else if (strcmp(argv[count], "-ack") == 0)
-            ack = 1;
         else if (strcmp(argv[count], "-server") == 0)
-            server = 1;
+            svr = 1;
     }
 
     /* check the encoding flags */
-    if (ipid + seq + ack == 0)
+    if (ipid == 0)
         ipid = 1; /* set default encode type if none given */
-    else if (ipid + seq + ack != 1)
+    else if (ipid != 1)
     {
         printf("\n\nOnly one encoding/decode flag (-ipid -seq -ack) can be used at a time.\n\n");
         exit(1);
@@ -122,11 +118,6 @@ main(int argc, char **argv)
             printf("\n\nYou need to supply a source and destination address for client mode.\n\n");
             exit(1);
         }
-        else if (ack == 1)
-        {
-            printf("\n\n-ack decoding can only be used in SERVER mode (-server)\n\n");
-            exit(1);
-        }
         else
         {
             printf("Destination Host: %s\n", desthost);
@@ -139,8 +130,6 @@ main(int argc, char **argv)
             printf("Encoded Filename: %s\n", filename);
             if (ipid == 1)
                 printf("Encoding Type   : IP ID\n");
-            else if (seq == 1)
-                printf("Encoding Type   : IP Sequence Number\n");
             printf("\nClient Mode: Sending data.\n\n");
         }
     }
@@ -163,15 +152,11 @@ main(int argc, char **argv)
         printf("Decoded Filename: %s\n", filename);
         if (ipid == 1)
             printf("Decoding Type Is: IP packet ID\n");
-        else if (seq == 1)
-            printf("Decoding Type Is: IP Sequence Number\n");
-        else if (ack == 1)
-            printf("Decoding Type Is: IP ACK field bounced packet.\n");
         printf("\nServer Mode: Listening for data.\n\n");
     }
 
     /* Do the dirty work */
-    forgepacket(source_host, dest_host, source_port, dest_port, filename, server, ipid, seq, ack);
+    forgepacket(source_host, dest_host, source_port, dest_port, filename, server, ipid);
     exit(0);
 }
 
@@ -186,17 +171,147 @@ main(int argc, char **argv)
  *
  * PROGRAMMER:     Nicole Jingco
  *
- * INTERFACE:      unsigned int, unsigned int, unsigned short, unsigned short, char *, int, int, int, int
+ * INTERFACE:      unsigned int source_addr, unsigned int dest_addr, unsigned short source_port, unsigned short dest_port, char *filename, int server, int ipid, int seq, int ack
  *
  * RETURNS:        
  *
  * NOTES:
  * 
  * -----------------------------------------------------------------------*/
-void forgepacket(unsigned int, unsigned int, unsigned short, unsigned short, char *, int, int, int, int)
+void forgepacket(unsigned int source_addr, unsigned int dest_addr, unsigned short source_port, unsigned short dest_port, char *filename, int svr, int ipid)
 {
+    if (svr == 0)
+    {
+        client(source_addr, dest_addr, dest_port, filename, ipid);
+    }
+    else
+    {
+        server(source_addr, filename, ipid);
+    }
 
     fprintf(stdout, "\nforge packets");
+}
+
+void client(unsigned int source_addr, unsigned int dest_addr, unsigned short dest_port, char *filename, int ipid)
+{
+    int ch;
+    int send_socket;
+    struct sockaddr_in sin;
+    FILE *input;
+
+    /* are we the client? */
+
+    if ((input = fopen(filename, "rb")) == NULL)
+    {
+        printf("I cannot open the file %s for reading\n", filename);
+        exit(1);
+    }
+    else
+        while ((ch = fgetc(input)) != EOF)
+        {
+            /* Delay loop. This really slows things down, but is necessary to ensure */
+            /* semi-reliable transport of messages over the Internet and will not flood */
+            /* slow network connections */
+            /* A better should probably be developed */
+            sleep(1);
+
+            /* Make the IP header with our forged information */
+            send_udp.ip.ihl = 5;
+            send_udp.ip.version = 4;
+            send_udp.ip.tos = 0;
+            send_udp.ip.tot_len = htons(40);
+
+            /* if we are NOT doing IP ID header encoding, randomize the value */
+            /* of the IP identification field */
+            if (ipid == 0)
+                send_udp.ip.id = (int)(255.0 * rand() / (RAND_MAX + 1.0));
+            else /* otherwise we "encode" it with our cheesy algorithm */
+                send_udp.ip.id = ch;
+
+            send_udp.ip.frag_off = 0;
+            send_udp.ip.ttl = 64;
+            send_udp.ip.protocol = IPPROTO_UDP;
+            send_udp.ip.check = 0;
+            send_udp.ip.saddr = source_addr;
+            send_udp.ip.daddr = dest_addr;
+
+            /* forge destination port */
+            send_udp.udp.dest = htons(dest_port);
+
+            /* Drop our forged data into the socket struct */
+            sin.sin_family = AF_INET;
+            sin.sin_port = send_udp.udp.source;
+            sin.sin_addr.s_addr = send_udp.ip.daddr;
+
+            /* Now open the raw socket for sending */
+            send_socket = socket(AF_INET, SOCK_RAW, IPPROTO_RAW);
+            if (send_socket < 0)
+            {
+                perror("send socket cannot be open. Are you root?");
+                exit(1);
+            }
+
+            /* Make IP header checksum */
+            send_udp.ip.check = in_cksum((unsigned short *)&send_udp.ip, 20);
+            /* Final preparation of the full header */
+
+            /* From synhose.c by knight */
+            pseudo_header.source_address = send_udp.ip.saddr;
+            pseudo_header.dest_address = send_udp.ip.daddr;
+            pseudo_header.placeholder = 0;
+            pseudo_header.protocol = IPPROTO_UDP;
+            pseudo_header.udp_length = htons(20);
+
+            bcopy((char *)&send_udp.udp, (char *)&pseudo_header.udp, 20);
+
+            /* Final checksum on the entire package */
+            send_udp.udp.check = in_cksum((unsigned short *)&pseudo_header, 32);
+
+            /* Away we go.... */
+            sendto(send_socket, &send_udp, 40, 0, (struct sockaddr *)&sin, sizeof(sin));
+            printf("Sending Data: %c\n", ch);
+
+            close(send_socket);
+        }
+    fclose(input);
+}
+
+void server(unsigned int source_addr, char *filename, int ipid)
+{
+    FILE *output;
+    int recv_socket;
+    char data;
+
+    if ((output = fopen(filename, "wb")) == NULL)
+    {
+        printf("I cannot open the file %s for writing\n", filename);
+        exit(1);
+    }
+
+    while (1) /* read packet loop */
+    {
+        /* Open socket for reading */
+        recv_socket = socket(AF_INET, SOCK_RAW, 6);
+
+        if (recv_socket < 0)
+        {
+            perror("receive socket cannot be open. Are you root?");
+            exit(1);
+        }
+        /* Listen for return packet on a passive socket */
+        read(recv_socket, (struct recv_udp *)&recv_pkt, 9999);
+
+        // Decrypt Here
+        data = "port char";
+
+        printf("Receiving Data: %c\n", data);
+        fprintf(output, "%c", data);
+        fflush(output);
+
+        close(recv_socket); /* close the socket so we don't hose the kernel */
+    }                       /* end while() read packet loop */
+
+    fclose(output);
 }
 
 /*--------------------------------------------------------------------------
@@ -313,7 +428,7 @@ unsigned int host_convert(char *hostname)
  * -----------------------------------------------------------------------*/
 void usage(char *progname)
 {
-    printf("Covert TCP usage: \n%s -dest dest_ip -source source_ip -file filename -source_port port -dest_port port -server [encode type]\n\n", progname);
+    printf("Covert UDP usage: \n%s -dest dest_ip -source source_ip -file filename -source_port port -dest_port port -server [encode type]\n\n", progname);
     printf("-dest dest_ip      - Host to send data to.\n");
     printf("-source source_ip  - Host where you want the data to originate from.\n");
     printf("                     In SERVER mode this is the host data will\n");
