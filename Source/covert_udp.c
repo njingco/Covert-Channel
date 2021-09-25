@@ -346,7 +346,7 @@ void server(unsigned int source_addr, unsigned short source_port, unsigned short
     while (1) /* read packet loop */
     {
         /* Open socket for reading */
-        recv_socket = socket(AF_INET, SOCK_RAW, 6);
+        recv_socket = socket(AF_INET, SOCK_RAW, 17);
 
         if (recv_socket < 0)
         {
@@ -355,16 +355,12 @@ void server(unsigned int source_addr, unsigned short source_port, unsigned short
         }
         /* Listen for return packet on a passive socket */
         read(recv_socket, (struct recv_udp *)&recv_packet, 9999);
-        printf("Receiving Data: %d\n", ntohs(recv_packet.udp.dest));
-        // fprintf(output, "%c", recv_packet.udp.uh_sport);
-        fflush(output);
-        // if (recv_packet.ip.saddr == source_addr)
-        // if (ntohs(recv_packet.udp.dest) == dest_port)
-        // {
-        //     printf("Receiving Data: %d\n", ntohs(recv_packet.udp.uh_sport));
-        //     // fprintf(output, "%c", recv_packet.udp.uh_sport);
-        //     fflush(output);
-        // }
+        if (recv_packet.ip.saddr == source_addr)
+        {
+            printf("Receiving Data: %c\n", ntohs(recv_packet.udp.source));
+            fprintf(output, "%c", ntohs(recv_packet.udp.source));
+            fflush(output);
+        }
 
         close(recv_socket); /* close the socket so we don't hose the kernel */
     }
