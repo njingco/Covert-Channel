@@ -192,7 +192,7 @@ void forgepacket(unsigned int source_addr, unsigned int dest_addr, unsigned shor
     if (svr == 0)
     {
         client(source_addr, dest_addr, source_port, dest_port, filename, ipid);
-        fprintf(stdout, "\nPackets Forged\n\n");
+        fprintf(stdout, "\nPackets Sent\n\n");
     }
     else
     {

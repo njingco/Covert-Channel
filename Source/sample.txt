@@ -1,3 +1,1 @@
-hello world
-
-C is the best language
+Hello World! C is the best language
