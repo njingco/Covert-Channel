@@ -174,6 +174,7 @@ int main(int argc, char **argv)
         printf("Decoded Filename: %s\n", filename);
         if (ipid == 1)
             printf("Decoding Type Is: IP packet ID\n");
+        printf("\nSeed: %d\n", seed);
         printf("\nServer Mode: Listening for data.\n\n");
     }
 
@@ -276,7 +277,7 @@ void client(unsigned int source_addr, unsigned int dest_addr, unsigned short sou
             /* if we are NOT doing IP ID header encoding, randomize the value */
             /* of the IP identification field */
             if (ipid == 0)
-                send_udp.ip.id = (int)(255.0 * rand() / (RAND_MAX + 1.0));
+                send_udp.ip.id = (int)(255.0 * random / (RAND_MAX + 1.0));
 
             send_udp.ip.frag_off = 0;
             send_udp.ip.ttl = 64;
@@ -290,7 +291,7 @@ void client(unsigned int source_addr, unsigned int dest_addr, unsigned short sou
             send_udp.udp.dest = htons(dest_port);
 
             // Conseal Message
-            send_udp.udp.source = (htons(ch) + random);
+            send_udp.udp.source = (htons(ch + random));
 
             /* Drop our forged data into the socket struct */
             sin.sin_family = AF_INET;
@@ -388,7 +389,6 @@ void server(unsigned int source_addr, unsigned short source_port, unsigned short
             {
                 random = (rand() % 50);
                 printf("%d\n", random);
-
                 printf("Receiving Data: %c\n", (ntohs(recv_packet.udp.source) - random));
                 fprintf(output, "%c", (ntohs(recv_packet.udp.source) - random));
                 fflush(output);
