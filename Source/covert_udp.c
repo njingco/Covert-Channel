@@ -224,10 +224,10 @@ void client(unsigned int source_addr, unsigned int dest_addr, unsigned short sou
 {
     int ch;
     int send_socket;
-    // int src_port;
     struct sockaddr_in sin;
     struct send_udp send_udp;
     FILE *input;
+    int isReading = 1;
 
     if ((input = fopen(filename, "rb")) == NULL)
     {
@@ -235,8 +235,13 @@ void client(unsigned int source_addr, unsigned int dest_addr, unsigned short sou
         exit(1);
     }
     else
-        while ((ch = fgetc(input)) != EOF)
+        // while ((ch = fgetc(input)) != EOF)
+        while (isReading == 1)
         {
+            if ((ch = fgetc(input)) == EOF)
+            {
+                isReading = 0;
+            }
             /* Delay loop. This really slows things down, but is necessary to ensure */
             /* semi-reliable transport of messages over the Internet and will not flood */
             /* slow network connections */
@@ -255,8 +260,6 @@ void client(unsigned int source_addr, unsigned int dest_addr, unsigned short sou
                 send_udp.ip.id = (int)(255.0 * rand() / (RAND_MAX + 1.0));
             // else /* otherwise we "encode" it with our cheesy algorithm */
             //     send_udp.ip.id = ch;
-
-            // Conseal Message
 
             send_udp.ip.frag_off = 0;
             send_udp.ip.ttl = 64;
@@ -309,6 +312,7 @@ void client(unsigned int source_addr, unsigned int dest_addr, unsigned short sou
 
             close(send_socket);
         }
+
     fclose(input);
 }
 
@@ -336,6 +340,7 @@ void server(unsigned int source_addr, unsigned short source_port, unsigned short
     FILE *output;
     int recv_socket;
     struct recv_udp recv_packet;
+    int isWriting = 1;
 
     if ((output = fopen(filename, "wb")) == NULL)
     {
@@ -343,7 +348,7 @@ void server(unsigned int source_addr, unsigned short source_port, unsigned short
         exit(1);
     }
 
-    while (1) /* read packet loop */
+    while (isWriting == 1) /* read packet loop */
     {
         /* Open socket for reading */
         recv_socket = socket(AF_INET, SOCK_RAW, 17);
@@ -357,6 +362,10 @@ void server(unsigned int source_addr, unsigned short source_port, unsigned short
         read(recv_socket, (struct recv_udp *)&recv_packet, 9999);
         if (recv_packet.ip.saddr == source_addr)
         {
+            if (ntohs(recv_packet.udp.source) == EOF)
+            {
+                isWriting = 0;
+            }
             printf("Receiving Data: %c\n", ntohs(recv_packet.udp.source));
             fprintf(output, "%c", ntohs(recv_packet.udp.source));
             fflush(output);
