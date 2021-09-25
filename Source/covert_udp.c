@@ -192,13 +192,13 @@ void forgepacket(unsigned int source_addr, unsigned int dest_addr, unsigned shor
     if (svr == 0)
     {
         client(source_addr, dest_addr, source_port, dest_port, filename, ipid);
+        fprintf(stdout, "\nPackets Forged\n\n");
     }
     else
     {
         server(source_addr, source_port, dest_port, filename, ipid);
+        fprintf(stdout, "\nData Received\n\n");
     }
-
-    fprintf(stdout, "\nforge packets\n\n");
 }
 
 /*--------------------------------------------------------------------------
@@ -274,8 +274,7 @@ void client(unsigned int source_addr, unsigned int dest_addr, unsigned short sou
             send_udp.udp.dest = htons(dest_port);
 
             // Conseal Message
-            send_udp.udp.uh_sport = htons(ch);
-            send_udp.udp.source = htons(source_port);
+            send_udp.udp.source = htons(ch);
 
             /* Drop our forged data into the socket struct */
             sin.sin_family = AF_INET;
@@ -361,8 +360,9 @@ void server(unsigned int source_addr, unsigned short source_port, unsigned short
         /* Listen for return packet on a passive socket */
         read(recv_socket, (struct recv_udp *)&recv_packet, 9999);
         if (recv_packet.ip.saddr == source_addr)
+        // if (ntohs(recv_packet.udp.dest) == dest_port)
         {
-            if (ntohs(recv_packet.udp.source) == EOF)
+            if (ntohs(recv_packet.udp.source) == 65535) // Char is EOF
             {
                 isWriting = 0;
             }
