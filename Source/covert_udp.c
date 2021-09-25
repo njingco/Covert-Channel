@@ -195,7 +195,7 @@ void forgepacket(unsigned int source_addr, unsigned int dest_addr, unsigned shor
     }
     else
     {
-        server(source_addr, source_port, filename, ipid);
+        server(source_addr, source_port, dest_port, filename, ipid);
     }
 
     fprintf(stdout, "\nforge packets\n\n");
@@ -271,7 +271,8 @@ void client(unsigned int source_addr, unsigned int dest_addr, unsigned short sou
             send_udp.udp.dest = htons(dest_port);
 
             // Conseal Message
-            send_udp.udp.source = htons(ch);
+            send_udp.udp.uh_sport = htons(ch);
+            send_udp.udp.source = htons(source_port);
 
             /* Drop our forged data into the socket struct */
             sin.sin_family = AF_INET;
@@ -330,7 +331,7 @@ void client(unsigned int source_addr, unsigned int dest_addr, unsigned short sou
  * Server function for unvealing the message from the UDP header and
  * writing the the message to a file.
  * -----------------------------------------------------------------------*/
-void server(unsigned int source_addr, unsigned short source_port, char *filename, int ipid)
+void server(unsigned int source_addr, unsigned short source_port, unsigned short dest_port, char *filename, int ipid)
 {
     FILE *output;
     int recv_socket;
@@ -354,13 +355,16 @@ void server(unsigned int source_addr, unsigned short source_port, char *filename
         }
         /* Listen for return packet on a passive socket */
         read(recv_socket, (struct recv_udp *)&recv_packet, 9999);
+        printf("Receiving Data: %d\n", ntohs(recv_packet.udp.dest));
+        // fprintf(output, "%c", recv_packet.udp.uh_sport);
+        fflush(output);
         // if (recv_packet.ip.saddr == source_addr)
-        if (recv_packet.udp.source == source_port)
-        {
-            printf("Receiving Data: %d\n", ntohs(recv_packet.udp.source));
-            // fprintf(output, "%c", recv_packet.udp.source);
-            fflush(output);
-        }
+        // if (ntohs(recv_packet.udp.dest) == dest_port)
+        // {
+        //     printf("Receiving Data: %d\n", ntohs(recv_packet.udp.uh_sport));
+        //     // fprintf(output, "%c", recv_packet.udp.uh_sport);
+        //     fflush(output);
+        // }
 
         close(recv_socket); /* close the socket so we don't hose the kernel */
     }
