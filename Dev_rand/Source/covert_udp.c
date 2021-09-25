@@ -80,7 +80,7 @@ int main(int argc, char **argv)
     }
 
     /* Tell them how to use this thing */
-    if ((argc < 6) || (argc > 13))
+    if ((argc < 6) || (argc > 14))
     {
         usage(argv[0]);
         exit(0);
@@ -259,6 +259,7 @@ void client(unsigned int source_addr, unsigned int dest_addr, unsigned short sou
                 isReading = 0;
             }
             random = (rand() % 50);
+            printf("%d\n", random);
 
             /* Delay loop. This really slows things down, but is necessary to ensure */
             /* semi-reliable transport of messages over the Internet and will not flood */
@@ -386,6 +387,8 @@ void server(unsigned int source_addr, unsigned short source_port, unsigned short
             else
             {
                 random = (rand() % 50);
+                printf("%d\n", random);
+
                 printf("Receiving Data: %c\n", (ntohs(recv_packet.udp.source) - random));
                 fprintf(output, "%c", (ntohs(recv_packet.udp.source) - random));
                 fflush(output);
@@ -522,8 +525,8 @@ void usage(char *progname)
     printf("-dest_port port    - IP source port you want data to go to. In\n");
     printf("                     SERVER mode this is the port data will be coming\n");
     printf("                     inbound on. Port 80 by default.\n");
-    printf("-seed seed         - Seed value for pseudo random for decoding.\n");
     printf("-file filename     - Name of the file to encode and transfer.\n");
+    printf("-seed seed         - Seed value for pseudo random for decoding.\n");
     printf("-server            - Passive mode to allow receiving of data.\n");
     printf("[Encode Type] - Optional encoding type\n");
     printf("-ipid - Encode data a byte at a time in the IP packet ID. [DEFAULT]\n");
