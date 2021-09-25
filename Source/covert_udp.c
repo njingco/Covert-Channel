@@ -3,7 +3,10 @@
  * 
  * PROGRAM:		    covert_udp
  * 
- * FUNCTIONS:		void forgepacket(unsigned int, unsigned int, unsigned short, unsigned short, char *, int, int, int, int);
+ * FUNCTIONS:		void forgepacket(unsigned int, unsigned int, unsigned short, unsigned short, char *, int, int);
+ *                  void client(unsigned int source_addr, unsigned int dest_addr, unsigned short source_port, unsigned short dest_port, char *filename, int ipid);
+ *                  void server(unsigned int source_addr, unsigned short source_port, unsigned short dest_port, char *filename, int ipid);
+ *                  int charToInt(char msg);
  *                  unsigned short in_cksum(unsigned short *, int);
  *                  unsigned int host_convert(char *);
  *                  void usage(char *);
@@ -21,6 +24,11 @@
  * program modifies the UDP header to transfer a file one byte at a time  to the destination
  * host consealing the data in the port number. This program acts as both a server and 
  * client.
+ * 
+ * Functions Modified:
+ * - forgepacket: changed it to only check if it will be running client or server
+ * - client: moved client functionality to this function
+ * - server: moved server functionality to this function
  * 
  * Compile:
  * cc -o covert_udp covert_udp.c
@@ -185,7 +193,7 @@ int main(int argc, char **argv)
  * RETURNS:        
  *
  * NOTES:
- * 
+ * This section runs client or the server code if server flag was set
  * -----------------------------------------------------------------------*/
 void forgepacket(unsigned int source_addr, unsigned int dest_addr, unsigned short source_port, unsigned short dest_port, char *filename, int svr, int ipid)
 {
@@ -202,7 +210,7 @@ void forgepacket(unsigned int source_addr, unsigned int dest_addr, unsigned shor
 }
 
 /*--------------------------------------------------------------------------
- * FUNCTION:        forgepacket
+ * FUNCTION:       client
  *
  * DATE:           Sep 20, 2021
  *
@@ -214,7 +222,7 @@ void forgepacket(unsigned int source_addr, unsigned int dest_addr, unsigned shor
  *
  * INTERFACE:      unsigned int source_addr, unsigned int dest_addr, unsigned short dest_port, char *filename, int ipid
  *
- * RETURNS:        
+ * RETURNS:        NA
  *
  * NOTES:
  * Client function for consealing the message using the UDP header and
@@ -235,6 +243,7 @@ void client(unsigned int source_addr, unsigned int dest_addr, unsigned short sou
         exit(1);
     }
     else
+    {
         // while ((ch = fgetc(input)) != EOF)
         while (isReading == 1)
         {
@@ -258,8 +267,6 @@ void client(unsigned int source_addr, unsigned int dest_addr, unsigned short sou
             /* of the IP identification field */
             if (ipid == 0)
                 send_udp.ip.id = (int)(255.0 * rand() / (RAND_MAX + 1.0));
-            // else /* otherwise we "encode" it with our cheesy algorithm */
-            //     send_udp.ip.id = ch;
 
             send_udp.ip.frag_off = 0;
             send_udp.ip.ttl = 64;
@@ -267,7 +274,6 @@ void client(unsigned int source_addr, unsigned int dest_addr, unsigned short sou
             send_udp.ip.check = 0;
             send_udp.ip.saddr = source_addr;
             send_udp.ip.daddr = dest_addr;
-
             send_udp.udp.len = htons(8);
 
             /* forge destination port */
@@ -311,12 +317,13 @@ void client(unsigned int source_addr, unsigned int dest_addr, unsigned short sou
 
             close(send_socket);
         }
+    }
 
     fclose(input);
 }
 
 /*--------------------------------------------------------------------------
- * FUNCTION:        forgepacket
+ * FUNCTION:       server
  *
  * DATE:           Sep 20, 2021
  *
@@ -328,7 +335,7 @@ void client(unsigned int source_addr, unsigned int dest_addr, unsigned short sou
  *
  * INTERFACE:      unsigned int source_addr, char *filename, int ipid
  *
- * RETURNS:        
+ * RETURNS:        NA
  *
  * NOTES:
  * Server function for unvealing the message from the UDP header and
@@ -360,7 +367,6 @@ void server(unsigned int source_addr, unsigned short source_port, unsigned short
         /* Listen for return packet on a passive socket */
         read(recv_socket, (struct recv_udp *)&recv_packet, 9999);
         if (recv_packet.ip.saddr == source_addr)
-        // if (ntohs(recv_packet.udp.dest) == dest_port)
         {
             if (ntohs(recv_packet.udp.source) == 65535) // Char is EOF
             {
