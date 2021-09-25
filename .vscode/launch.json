@@ -31,7 +31,7 @@
             "type": "cppdbg",
             "request": "launch",
             "program": "${workspaceFolder}/Source/covert_udp",
-            "args": ["-dest", "192.168.1.72", "-source", "192.168.1.71", "-source_port", "323", "-dest_port", "323", "-file", "sample.txt ", "-server"],
+            "args": ["-dest", "192.168.1.72", "-source", "192.168.1.71", "-source_port", "323", "-dest_port", "323", "-file", "test.txt ", "-server"],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
             "environment": [],

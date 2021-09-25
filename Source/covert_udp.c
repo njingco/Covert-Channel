@@ -29,7 +29,7 @@
  * ./covert_udp -dest 192.168.1.72 -source 192.168.1.71 -source_port 323 -dest_port 323 -file sample.txt
  * 
  * Server
- * ./covert_udp -dest 192.168.1.72 -source 192.168.1.71 -source_port 323 -dest_port 323 -file sample.txt -server
+ * ./covert_udp -dest 192.168.1.71 -source 192.168.1.72 -source_port 323 -dest_port 323 -file test.txt -server
  * ---------------------------------------------------------------------------------------*/
 #include "covert_udp.h"
 
@@ -195,7 +195,7 @@ void forgepacket(unsigned int source_addr, unsigned int dest_addr, unsigned shor
     }
     else
     {
-        server(source_addr, filename, ipid);
+        server(source_addr, source_port, filename, ipid);
     }
 
     fprintf(stdout, "\nforge packets\n\n");
@@ -226,6 +226,7 @@ void client(unsigned int source_addr, unsigned int dest_addr, unsigned short sou
     int send_socket;
     // int src_port;
     struct sockaddr_in sin;
+    struct send_udp send_udp;
     FILE *input;
 
     if ((input = fopen(filename, "rb")) == NULL)
@@ -246,7 +247,7 @@ void client(unsigned int source_addr, unsigned int dest_addr, unsigned short sou
             send_udp.ip.ihl = 5;
             send_udp.ip.version = 4;
             send_udp.ip.tos = 0;
-            send_udp.ip.tot_len = htons(40);
+            send_udp.ip.tot_len = htons(28);
 
             /* if we are NOT doing IP ID header encoding, randomize the value */
             /* of the IP identification field */
@@ -263,6 +264,8 @@ void client(unsigned int source_addr, unsigned int dest_addr, unsigned short sou
             send_udp.ip.check = 0;
             send_udp.ip.saddr = source_addr;
             send_udp.ip.daddr = dest_addr;
+
+            send_udp.udp.len = htons(8);
 
             /* forge destination port */
             send_udp.udp.dest = htons(dest_port);
@@ -300,7 +303,7 @@ void client(unsigned int source_addr, unsigned int dest_addr, unsigned short sou
             send_udp.udp.check = in_cksum((unsigned short *)&pseudo_header, 32);
 
             /* Away we go.... */
-            sendto(send_socket, &send_udp, 40, 0, (struct sockaddr *)&sin, sizeof(sin));
+            sendto(send_socket, &send_udp, 28, 0, (struct sockaddr *)&sin, sizeof(sin));
             printf("Sending Data: %c\n", ch);
 
             close(send_socket);
@@ -327,10 +330,11 @@ void client(unsigned int source_addr, unsigned int dest_addr, unsigned short sou
  * Server function for unvealing the message from the UDP header and
  * writing the the message to a file.
  * -----------------------------------------------------------------------*/
-void server(unsigned int source_addr, char *filename, int ipid)
+void server(unsigned int source_addr, unsigned short source_port, char *filename, int ipid)
 {
     FILE *output;
     int recv_socket;
+    struct recv_udp recv_packet;
 
     if ((output = fopen(filename, "wb")) == NULL)
     {
@@ -349,14 +353,17 @@ void server(unsigned int source_addr, char *filename, int ipid)
             exit(1);
         }
         /* Listen for return packet on a passive socket */
-        read(recv_socket, (struct recv_udp *)&recv_pkt, 9999);
-
-        printf("Receiving Data: %c\n", recv_pkt.udp.source);
-        fprintf(output, "%c", recv_pkt.udp.source);
-        fflush(output);
+        read(recv_socket, (struct recv_udp *)&recv_packet, 9999);
+        // if (recv_packet.ip.saddr == source_addr)
+        if (recv_packet.udp.source == source_port)
+        {
+            printf("Receiving Data: %d\n", ntohs(recv_packet.udp.source));
+            // fprintf(output, "%c", recv_packet.udp.source);
+            fflush(output);
+        }
 
         close(recv_socket); /* close the socket so we don't hose the kernel */
-    }                       /* end while() read packet loop */
+    }
 
     fclose(output);
 }
