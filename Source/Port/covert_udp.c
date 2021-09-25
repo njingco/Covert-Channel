@@ -366,9 +366,12 @@ void server(unsigned int source_addr, unsigned short source_port, unsigned short
             {
                 isWriting = 0;
             }
-            printf("Receiving Data: %c\n", ntohs(recv_packet.udp.source));
-            fprintf(output, "%c", ntohs(recv_packet.udp.source));
-            fflush(output);
+            else
+            {
+                printf("Receiving Data: %c\n", ntohs(recv_packet.udp.source));
+                fprintf(output, "%c", ntohs(recv_packet.udp.source));
+                fflush(output);
+            }
         }
 
         close(recv_socket); /* close the socket so we don't hose the kernel */
