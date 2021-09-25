@@ -1,0 +1,51 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Client",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/Source/covert_udp",
+            "args": ["-dest", "192.168.1.72", "-source", "192.168.1.71", "-source_port", "323", "-dest_port", "323", "-file", "sample.txt "],
+            // "args": ["-dest 192.168.1.72 -source 192.168.1.71 -source-port 323 -dest-port 323 -file sample.txt"],
+            "stopAtEntry": false,            
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ],
+            "preLaunchTask": "C/C++: gcc build active file",
+            "miDebuggerPath": "/usr/bin/gdb"
+        },
+        {
+            "name": "Server",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/Source/covert_udp",
+            "args": ["-dest", "192.168.1.72", "-source", "192.168.1.71", "-source_port", "323", "-dest_port", "323", "-file", "test.txt ", "-server"],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ],
+            "preLaunchTask": "C/C++: gcc build active file",
+            "miDebuggerPath": "/usr/bin/gdb"
+        }
+    ]
+}
