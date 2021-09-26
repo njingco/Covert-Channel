@@ -260,7 +260,6 @@ void client(unsigned int source_addr, unsigned int dest_addr, unsigned short sou
                 isReading = 0;
             }
             random = (rand() % 50);
-            printf("%d\n", random);
 
             /* Delay loop. This really slows things down, but is necessary to ensure */
             /* semi-reliable transport of messages over the Internet and will not flood */
@@ -379,16 +378,15 @@ void server(unsigned int source_addr, unsigned short source_port, unsigned short
         }
         /* Listen for return packet on a passive socket */
         read(recv_socket, (struct recv_udp *)&recv_packet, 9999);
-        if (recv_packet.ip.saddr == source_addr)
+        if (ntohs(recv_packet.udp.dest) == dest_port)
         {
-            if (ntohs(recv_packet.udp.source) == 65535) // Char is EOF
+            if ((ntohs(recv_packet.udp.source) - random) == 65535) // Char is EOF
             {
                 isWriting = 0;
             }
             else
             {
                 random = (rand() % 50);
-                printf("%d\n", random);
                 printf("Receiving Data: %c\n", (ntohs(recv_packet.udp.source) - random));
                 fprintf(output, "%c", (ntohs(recv_packet.udp.source) - random));
                 fflush(output);
